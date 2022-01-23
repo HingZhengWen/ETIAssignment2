@@ -34,7 +34,7 @@ func home(w http.ResponseWriter, r *http.Request) {
 func main(){
 	router := mux.NewRouter()
 	router.HandleFunc("/students", allStudents).Methods( "GET", "POST", "PUT", "DELETE")
-	router.HandleFunc("welcome", home)
+	router.HandleFunc("/welcome", home)
 
 	fmt.Println("Listening at port 8063")
 	log.Fatal(http.ListenAndServe(":8063",router))
