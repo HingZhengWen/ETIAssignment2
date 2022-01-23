@@ -31,8 +31,8 @@ type studentInfo struct {
 func main(){
 	router := mux.NewRouter()
 	router.HandleFunc("/tutors", allStudents).Methods( "GET", "POST", "PUT", "DELETE")
-	fmt.Println("Listening at port 8062")
-	log.Fatal(http.ListenAndServe(":8062",router))
+	fmt.Println("Listening at port 8063")
+	log.Fatal(http.ListenAndServe(":8063",router))
 	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
 	if err  != nil {
         panic(err.Error())
