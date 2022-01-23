@@ -10,8 +10,8 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o /docker-gs-ping
+RUN go build -o /etiasg2
 
 EXPOSE 8063
 
-CMD [ "/docker-gs-ping" ]
+CMD [ "/etiasg2" ]
