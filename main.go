@@ -1,13 +1,18 @@
 package main
 
 import (
+	"encoding/json"
+	"net/http"
 	"fmt"
 	"bufio"
 	"os"
+	"log"
 	"database/sql"
+	"github.com/gorilla/mux"
+	
 	_ "github.com/go-sql-driver/mysql"
 )
-
+var students map[string]studentInfo
 type Students struct{
 	StudentID string
 	StudentName string 
@@ -19,14 +24,29 @@ type Followers struct{
 	StudentID string
 	FollowerID string
 }
+type studentInfo struct {
+	Title string `json:"Student"`
+}
 
 func main(){
+	router := mux.NewRouter()
+	router.HandleFunc("/tutors", allStudents).Methods( "GET", "POST", "PUT", "DELETE")
+	fmt.Println("Listening at port 8062")
+	log.Fatal(http.ListenAndServe(":8062",router))
 	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
 	if err  != nil {
         panic(err.Error())
 	} 
 	defer db.Close()
 	inputs(db)
+}
+func allStudents(w http.ResponseWriter, r *http.Request) {
+	kv := r.URL.Query()
+	for k, v := range kv {
+		fmt.Println(k, v)
+	}
+	//returns all the students in JSON
+	json.NewEncoder(w).Encode(students)
 }
 func inputs(db *sql.DB){
 	fmt.Println("1. Search students")
