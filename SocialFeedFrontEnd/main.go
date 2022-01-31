@@ -18,6 +18,9 @@ type FollowerList struct{
 type PostList struct{
 	PostList []string
 }
+type FollowingPostList struct{
+	FollowingPostList []string
+}
 type SelectedPost struct{
 	SelectedPost []string
 }
@@ -75,6 +78,7 @@ func main() {
 	router.HandleFunc("/myposts", myposts)
 	router.HandleFunc("/viewpost", alterposts)
 	router.HandleFunc("/updatepostpage", updatepost)
+	router.HandleFunc("/followerfeed", followerfeed)
 	fmt.Println("Listening on port 8060")
 	http.ListenAndServe(":8060", router)
 }
@@ -288,7 +292,8 @@ func postpage(w http.ResponseWriter, r *http.Request){
 		_, err := db.Query(query)  
 			if err != nil {
 			panic(err.Error())
-		}		
+		}
+		http.Redirect(w,r,"/myposts",http.StatusFound)		
 	}	
 }
 var postlist PostList
@@ -377,4 +382,60 @@ func updatepost(w http.ResponseWriter, r *http.Request){
 		}
 		http.Redirect(w,r,"/feedpage",http.StatusFound)		
 	}
+}
+var followinglistofpost FollowingPostList
+func followerfeed(w http.ResponseWriter, r *http.Request){
+	if r.Method == "GET" {
+		tmpl := template.Must(template.ParseFiles("./web/followerfeed.html"))
+		var followerpostlist []string
+		followerpostlist = getfollowingsid()
+		followinglistofpost.FollowingPostList = followerpostlist
+		tmpl.Execute(w, followinglistofpost)
+	}
+}
+func getfollowingsid() []string{
+	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
+	if err != nil {
+		panic(err.Error())
+	}
+	var followinglist []string
+	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
+	"00001")
+	results, err := db.Query(query)
+	if err != nil {
+        panic(err.Error())
+    }
+    for results.Next() {
+        var followings Followers
+        err = results.Scan(&followings.StudentID, &followings.FollowerID)
+        if err != nil {
+            panic(err.Error()) 
+        }
+		followinglist = append(followinglist,followings.StudentID)
+	}
+	var followingpostlist []string
+	followingpostlist = getfollowingsposts(followinglist,db)
+
+	fmt.Println(followinglist)
+	return followingpostlist
+}
+func getfollowingsposts(followerlist []string, db *sql.DB) []string{
+	var followingpostlist []string
+	for i:= 0; i < len(followerlist); i++ {
+		query := fmt.Sprintf("Select * FROM Feed Where studentID = '%s'",
+		followerlist[i])
+		results, err := db.Query(query)
+		if err != nil {
+        	panic(err.Error())
+		}
+		for results.Next() {
+			var feed Feed
+			err = results.Scan(&feed.StudentID,&feed.Feeddata,&feed.FeedID)
+			if err != nil {
+				panic(err.Error()) 
+			}
+			followingpostlist = append(followingpostlist,feed.Feeddata)
+		}	
+   	}
+	return followingpostlist
 }
