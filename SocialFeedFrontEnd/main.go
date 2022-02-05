@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"io/ioutil"
 	"database/sql"
+	"strings"
 	"strconv"
 	"github.com/gorilla/mux"
 	_ "github.com/go-sql-driver/mysql"
@@ -51,22 +53,30 @@ type Feed struct{
 	Feeddata string
 	FeedID string
 }
-var currentstudent Students
-//Landing page
 func index(w http.ResponseWriter, r *http.Request) {
-	currentstudent.StudentID = "00001"
-	currentstudent.StudentName = "Jayman Hing"
-	currentstudent.DOB = "0.000499500499500499"
-	currentstudent.Address = "Apt blk 121 lengkong tiga"
-	currentstudent.PhoneNumber = "87776080"
 	if r.Method == "GET" {
 		tmpl := template.Must(template.ParseFiles("index.html"))
 		tmpl.Execute(w, nil)
 	}
 	listFollowings()
 }
+var studentsessionid string
 var lastsearchedstudent SearchStudents
 func main() {
+	response, err := http.Get("http://localhost:4000/session")
+	if err != nil {
+		fmt.Printf("The HTTP request failed with error %s\n", err)
+	} else {
+		data, _ := ioutil.ReadAll(response.Body)
+		var test string
+		test = strings.Replace(string(data),"{","",-1)
+		test = strings.Replace(string(test),"}","",-1)
+		test = strings.Replace(string(test),`"`,``,-1)
+		test = strings.Replace(string(test),`{`,``,-1)
+		test = strings.Replace(string(test),`UserID:`,``,-1)
+		s := strings.Split(test,",")
+		studentsessionid = s[0]
+	}
 	router := mux.NewRouter()
 	router.HandleFunc("/", index)
 	router.HandleFunc("/student_search", search_student)
@@ -89,7 +99,7 @@ func search_student(w http.ResponseWriter, r *http.Request){
 	} else{
 		db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
 		query := fmt.Sprintf("Select * FROM Students Where StudentID != '%s' && StudentName = '%s'",
-		"00001",r.FormValue("s_name"))
+		studentsessionid,r.FormValue("s_name"))
 		results, err := db.Query(query)
 		if err != nil {
 			panic(err.Error())
@@ -109,8 +119,6 @@ func search_student(w http.ResponseWriter, r *http.Request){
 			lastsearchedstudent.Status = false
 			http.Redirect(w,r,"/student_profile",http.StatusFound)
 		}
-	// 00001 for now as i have no way to confirm student's current logon user
-	// so for now it is 00001, as the user for this test would be user 00001
 	}
 }
 func student_profile(w http.ResponseWriter, r *http.Request){
@@ -125,7 +133,7 @@ func student_profile(w http.ResponseWriter, r *http.Request){
 			tmpl.Execute(w, lastsearchedstudent)
 		}else{
 			query := fmt.Sprintf("Delete FROM Followers Where followerID = '%s' && studentID = '%s'",
-			"00001",lastsearchedstudent.StudentID)
+			studentsessionid,lastsearchedstudent.StudentID)
 			_, err := db.Query(query)  
 			if err != nil {
 				panic(err.Error())
@@ -139,7 +147,7 @@ func student_profile(w http.ResponseWriter, r *http.Request){
 			tmpl.Execute(w, lastsearchedstudent)
 		}else{
 			query := fmt.Sprintf("Insert INTO Followers Values('%s','%s')",
-			lastsearchedstudent.StudentID,"00001")
+			lastsearchedstudent.StudentID,studentsessionid)
 			_, err := db.Query(query)  
 			if err != nil {
 				panic(err.Error())
@@ -153,7 +161,7 @@ func checkStudentFollowed() bool{
 	var studentfollowed bool
 	studentfollowed = false
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
-	"00001")
+	studentsessionid)
 	results, err := db.Query(query)
 	if err != nil {
 		panic(err.Error())
@@ -178,7 +186,7 @@ func listFollowings(){
 	}
 	var followinglist []Followers
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
-	"00001")
+	studentsessionid)
 	results, err := db.Query(query)
 	if err != nil {
         panic(err.Error())
@@ -228,7 +236,7 @@ func listFollowers(){
 	}
 	var followerlist []Followers
 	query := fmt.Sprintf("Select * FROM Followers Where studentID = '%s'",
-	"00001")
+	studentsessionid)
 	results, err := db.Query(query)
 	if err != nil {
         panic(err.Error())
@@ -288,11 +296,12 @@ func postpage(w http.ResponseWriter, r *http.Request){
 		var count string 
 		db.QueryRow("Select Count(*)+1 FROM Feed").Scan(&count)
 		query := fmt.Sprintf("Insert INTO Feed Values('%s','%s','%s')",
-		"00001",r.FormValue("feeddata"),count)
+		studentsessionid,r.FormValue("feeddata"),count)
 		_, err := db.Query(query)  
 			if err != nil {
 			panic(err.Error())
 		}
+
 		http.Redirect(w,r,"/myposts",http.StatusFound)		
 	}	
 }
@@ -306,7 +315,7 @@ func getposts(){
 	var feedlist []string
 	
 	query := fmt.Sprintf("Select * FROM Feed Where studentID = '%s'",
-	"00001")
+	studentsessionid)
 	results, err := db.Query(query)
 	if err != nil {
         panic(err.Error())
@@ -400,7 +409,7 @@ func getfollowingsid() []string{
 	}
 	var followinglist []string
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
-	"00001")
+	studentsessionid)
 	results, err := db.Query(query)
 	if err != nil {
         panic(err.Error())
@@ -415,8 +424,6 @@ func getfollowingsid() []string{
 	}
 	var followingpostlist []string
 	followingpostlist = getfollowingsposts(followinglist,db)
-
-	fmt.Println(followinglist)
 	return followingpostlist
 }
 func getfollowingsposts(followerlist []string, db *sql.DB) []string{
