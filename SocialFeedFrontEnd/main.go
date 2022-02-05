@@ -63,7 +63,7 @@ func index(w http.ResponseWriter, r *http.Request) {
 var studentsessionid string
 var lastsearchedstudent SearchStudents
 func main() {
-	response, err := http.Get("http://localhost:4000/session")
+	response, err := http.Get("http://10.31.11.11:8090/session")
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
 	} else {
