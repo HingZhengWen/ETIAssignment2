@@ -66,6 +66,7 @@ func main() {
 	response, err := http.Get("http://10.31.11.11:8090/session")
 	if err != nil {
 		fmt.Printf("The HTTP request failed with error %s\n", err)
+		studentsessionid = "00001"
 	} else {
 		data, _ := ioutil.ReadAll(response.Body)
 		var test string

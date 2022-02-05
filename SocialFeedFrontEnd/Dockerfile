@@ -9,10 +9,10 @@ COPY go.sum ./
 RUN go mod download
 
 COPY *.go ./
-COPY ./web ./web
+COPY index.html ./
+COPY *.html ./web
 
-RUN go build -o /etiasg2
-
+RUN go build -o /socialfeedfrontend
 EXPOSE 8060
 
-CMD [ "/etiasg2" ]
+CMD [ "/socialfeedfrontend" ]

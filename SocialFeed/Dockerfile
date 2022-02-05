@@ -10,8 +10,8 @@ RUN go mod download
 
 COPY *.go ./
 
-RUN go build -o /etiasg2
+RUN go build -o /socialfeedapi
 
 EXPOSE 8061
 
-CMD [ "/SocialFeedAPI" ]
+CMD [ "/socialfeedapi" ]
