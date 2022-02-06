@@ -8,9 +8,7 @@ COPY go.mod ./
 COPY go.sum ./
 RUN go mod download
 
-COPY *.go ./
-COPY index.html ./
-COPY *.html ./web
+COPY . .
 
 RUN go build -o /socialfeedfrontend
 EXPOSE 8060

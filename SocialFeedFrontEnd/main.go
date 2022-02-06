@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
-	"io/ioutil"
+	/*"io/ioutil"*/
 	"database/sql"
-	"strings"
+	/*"strings"*/
 	"strconv"
 	"github.com/gorilla/mux"
 	_ "github.com/go-sql-driver/mysql"
@@ -53,33 +53,65 @@ type Feed struct{
 	Feeddata string
 	FeedID string
 }
+var studentsessionid string
 func index(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == "GET" {
+		/*response, err := http.Get("http://10.31.11.11:8090/session")
+		if err != nil {
+			fmt.Printf("The HTTP request failed with error %s\n", err)
+			test := "1"
+			studentsessionid = append(studentsessionid,test)
+		} else {
+			data, _ := ioutil.ReadAll(response.Body)
+			var test string
+			test = strings.Replace(string(data),"{","",-1)
+			test = strings.Replace(string(test),"}","",-1)
+			test = strings.Replace(string(test),`"`,``,-1)
+			test = strings.Replace(string(test),`{`,``,-1)
+			test = strings.Replace(string(test),`UserID:`,``,-1)
+			s := strings.Split(test,",")
+			studentsessionid = append(studentsessionid,s[0])
+			fmt.Println(string(data))
+		}*/
+		studentsessionid = "1"
 		tmpl := template.Must(template.ParseFiles("index.html"))
 		tmpl.Execute(w, nil)
 	}
 	listFollowings()
 }
-var studentsessionid string
+func index2(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method == "GET" {
+		/*response, err := http.Get("http://10.31.11.11:8090/session")
+		if err != nil {
+			fmt.Printf("The HTTP request failed with error %s\n", err)
+			test := "1"
+			studentsessionid = append(studentsessionid,test)
+		} else {
+			data, _ := ioutil.ReadAll(response.Body)
+			var test string
+			test = strings.Replace(string(data),"{","",-1)
+			test = strings.Replace(string(test),"}","",-1)
+			test = strings.Replace(string(test),`"`,``,-1)
+			test = strings.Replace(string(test),`{`,``,-1)
+			test = strings.Replace(string(test),`UserID:`,``,-1)
+			s := strings.Split(test,",")
+			studentsessionid = append(studentsessionid,s[0])
+			fmt.Println(string(data))
+		}*/
+		studentsessionid = "2"
+		tmpl := template.Must(template.ParseFiles("index2.html"))
+		tmpl.Execute(w, nil)
+	}
+	listFollowings()
+}
 var lastsearchedstudent SearchStudents
 func main() {
-	response, err := http.Get("http://10.31.11.11:8090/session")
-	if err != nil {
-		fmt.Printf("The HTTP request failed with error %s\n", err)
-		studentsessionid = "00001"
-	} else {
-		data, _ := ioutil.ReadAll(response.Body)
-		var test string
-		test = strings.Replace(string(data),"{","",-1)
-		test = strings.Replace(string(test),"}","",-1)
-		test = strings.Replace(string(test),`"`,``,-1)
-		test = strings.Replace(string(test),`{`,``,-1)
-		test = strings.Replace(string(test),`UserID:`,``,-1)
-		s := strings.Split(test,",")
-		studentsessionid = s[0]
-	}
+	
 	router := mux.NewRouter()
 	router.HandleFunc("/", index)
+	router.HandleFunc("/2", index2)
 	router.HandleFunc("/student_search", search_student)
 	router.HandleFunc("/student_profile", student_profile)
 	router.HandleFunc("/followinglist", listfollowing)
@@ -93,12 +125,20 @@ func main() {
 	fmt.Println("Listening on port 8060")
 	http.ListenAndServe(":8060", router)
 }
+func opendb() *sql.DB{
+	db, err := sql.Open("mysql", "user:password@tcp(10.31.11.11:8062)/ETIStudentSocialDB")
+	if err != nil {
+		panic(err.Error())
+	}
+	return db
+}
+
 func search_student(w http.ResponseWriter, r *http.Request){
 	if r.Method == "GET" {
 		tmpl := template.Must(template.ParseFiles("./web/student_search.html"))
 		tmpl.Execute(w, nil)
 	} else{
-		db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
+		db := opendb()
 		query := fmt.Sprintf("Select * FROM Students Where StudentID != '%s' && StudentName = '%s'",
 		studentsessionid,r.FormValue("s_name"))
 		results, err := db.Query(query)
@@ -123,18 +163,17 @@ func search_student(w http.ResponseWriter, r *http.Request){
 	}
 }
 func student_profile(w http.ResponseWriter, r *http.Request){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	if checkStudentFollowed() == true{
 		if r.Method == "GET" {
 			lastsearchedstudent.Status = true
 			tmpl := template.Must(template.ParseFiles("./web/student_profile.html"))
 			tmpl.Execute(w, lastsearchedstudent)
+			
 		}else{
 			query := fmt.Sprintf("Delete FROM Followers Where followerID = '%s' && studentID = '%s'",
 			studentsessionid,lastsearchedstudent.StudentID)
+			fmt.Println(studentsessionid)
 			_, err := db.Query(query)  
 			if err != nil {
 				panic(err.Error())
@@ -149,6 +188,7 @@ func student_profile(w http.ResponseWriter, r *http.Request){
 		}else{
 			query := fmt.Sprintf("Insert INTO Followers Values('%s','%s')",
 			lastsearchedstudent.StudentID,studentsessionid)
+			fmt.Println(studentsessionid)
 			_, err := db.Query(query)  
 			if err != nil {
 				panic(err.Error())
@@ -158,7 +198,7 @@ func student_profile(w http.ResponseWriter, r *http.Request){
 	}
 }
 func checkStudentFollowed() bool{
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
+	db := opendb()
 	var studentfollowed bool
 	studentfollowed = false
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
@@ -181,10 +221,7 @@ func checkStudentFollowed() bool{
 }
 var followinglist FollowingList
 func listFollowings(){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	var followinglist []Followers
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
 	studentsessionid)
@@ -231,10 +268,7 @@ func listfollowing(w http.ResponseWriter, r *http.Request){
 }
 var followerlist FollowerList
 func listFollowers(){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	var followerlist []Followers
 	query := fmt.Sprintf("Select * FROM Followers Where studentID = '%s'",
 	studentsessionid)
@@ -286,10 +320,7 @@ func feedpage(w http.ResponseWriter, r *http.Request){
 	}
 }
 func postpage(w http.ResponseWriter, r *http.Request){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	if r.Method == "GET" {
 		tmpl := template.Must(template.ParseFiles("./web/postpage.html"))
 		tmpl.Execute(w, followerlist)
@@ -309,10 +340,7 @@ func postpage(w http.ResponseWriter, r *http.Request){
 var postlist PostList
 var feedidlist []Feed
 func getposts(){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	var feedlist []string
 	
 	query := fmt.Sprintf("Select * FROM Feed Where studentID = '%s'",
@@ -346,10 +374,7 @@ func myposts(w http.ResponseWriter, r *http.Request){
 var selectedpostlist SelectedPost
 var myvar int
 func alterposts(w http.ResponseWriter, r *http.Request){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	var selectedlist []string
 	if r.Method == "GET" {
 		tmpl := template.Must(template.ParseFiles("./web/viewpost.html"))
@@ -375,10 +400,7 @@ func alterposts(w http.ResponseWriter, r *http.Request){
 	}
 }
 func updatepost(w http.ResponseWriter, r *http.Request){
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	if r.Method == "GET" {
 		tmpl := template.Must(template.ParseFiles("./web/updatepostpage.html"))
 		tmpl.Execute(w, myvar)
@@ -404,10 +426,7 @@ func followerfeed(w http.ResponseWriter, r *http.Request){
 	}
 }
 func getfollowingsid() []string{
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
-	if err != nil {
-		panic(err.Error())
-	}
+	db := opendb()
 	var followinglist []string
 	query := fmt.Sprintf("Select * FROM Followers Where followerID = '%s'",
 	studentsessionid)

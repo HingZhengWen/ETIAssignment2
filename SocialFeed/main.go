@@ -17,13 +17,21 @@ type Feed struct{
 func main(){
 	router := mux.NewRouter()
 	router.HandleFunc("/api/v1/socialfeed/{studentid}", feed).Methods("GET","PUT","POST","DELETE")
-
+	router.HandleFunc("/",test)
 	fmt.Println("Listening on port 8061")
 	http.ListenAndServe(":8061", router)
 }
+func test(w http.ResponseWriter, r *http.Request){
+	feed := "test"
+	b, err := json.Marshal(feed)
+		if err != nil{
+			fmt.Println(err)
+		}
+	w.Write([]byte(string(b)))
+}
 func feed(w http.ResponseWriter, r *http.Request ){	
 	params := mux.Vars(r)
-	db, err := sql.Open("mysql", "user:password@tcp(127.0.0.1:3306)/ETIStudentSocialDB")
+	db, err := sql.Open("mysql", "user:password@tcp(10.31.11.11:8062)/ETIStudentSocialDB")
 	if err != nil {
 		panic(err.Error())
 	}
